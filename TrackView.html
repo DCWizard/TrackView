@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content= "width=device-width, initial-scale=1.0">
+  <title>TrackView</title>
+  <style>
+    *, ::before, ::after {
+      box-sizing: border-box;
+    }
+    html, body, body {
+      padding:0;
+      margin: 0px;
+      height: 100%;
+      width:  100%;
+      background-color:rgb(32, 35, 37);
+    }
+    html, body, .MainContainer {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+      height: 100%;
+    }
+    #WaitingBackground {
+    	position: absolute;
+    	top: 0;
+    	left: 0;
+    	width: 100vw;
+    	height: 100vh;
+      color:white;
+      font-size: min(7vh,7vw);
+      text-align: center;
+      align-content: center;
+    	background-color: #00F8;
+    	z-index: 2147483647;
+    }
+    .MainContainer {
+      display: flex;
+      height: 100%;
+      flex-direction: column;
+      font-size: min(1.5vh, 1.5vw);
+      color: #ccc;
+      background: rgb(32, 35, 37);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+    }
+
+    .MainPanel {
+      display: flex;
+      flex: 1;
+    }
+    .MainPanel .LeftPanel {
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+      border-right: 1px solid rgb(10, 10, 10);
+    }
+    .MainPanel .RightPanel {
+      width: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: min(5.5vh, 5.5vw);
+      background-color: rgb(16, 17, 19);
+    }
+    video {
+      width: 100%;
+    }
+    #Waveform {
+      display: flex;
+      position: relative;
+      overflow: hidden;
+      width:100%;
+      height: 15vh;
+      bottom:0;
+      background-color: rgb(28, 32, 34);
+      border-top: 1px solid rgb(10, 10, 10);
+      cursor: grab;
+    }
+    #WaveCursor {
+    	z-index: 10;
+    	opacity: .25;
+    	user-select: none;
+    	pointer-events: none;
+    	background-color: #fff;
+    	width: 1px;
+    	height: 100%;
+    	position: absolute;
+    	top: 0;
+    	bottom: 0;
+    	left: 0;
+    }
+
+    .header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: min(5.5vh, 5.5vw);
+      border-bottom: 1px solid rgb(10, 10, 10);
+      background-color: rgb(28, 32, 34);
+    }
+    .header .left {
+      display: flex;
+      align-items: center;
+      height: 100%;
+      padding-left: 0px;
+    }
+
+    .header .right {
+      display: flex;
+      align-items: center;
+      height: 100%;
+    }
+    .header .right .item {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      padding: 0 min(3vh, 3vw);
+      cursor: pointer;
+      overflow: hidden;
+      color: #f1fa8c;
+      border-left: 1px solid rgb(17, 21, 24);
+      background-color: rgb(39, 41, 54);
+      transition: all 0.2s ease;
+      text-decoration: none;
+    }
+    .header .right .item:hover {
+      color: #fff;
+      background-color: rgb(66, 82, 95);
+    }
+    .header .right .item .open {
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+    }
+    input[type="file"] {
+      padding: min(1vh, 1vw);
+      width:50vw;
+      color: rgb(20, 20, 233);
+      font-size: min(2vh, 2vw);
+      cursor: pointer;
+      border: 2px solid rgb(20, 20, 233);
+      border-radius: 5px;
+      background-color: #fff;
+    }
+  </style>
+  <script id="DCTools"  src="DCTools.js"></script>
+</head>
+<body>
+  <div id="WaitingBackground">
+    <p id="WaitingText"></p> 
+  </div> 
+  <div class="MainContainer">
+    <header class="header">
+      <div class="left">
+        <input type="file" id="videoInput" accept="video/*">
+      </div>
+      <div class="log"></div>
+      <div class="right">
+        <a class="item" href="https://github.com/DCWizard/TrackView">
+          Github
+        </a>
+      </div>
+    </header>
+    <section class="MainPanel">
+      <div class="LeftPanel">
+      </div>
+      <div class="RightPanel">
+        <video id="MainAudio" src="https://wfplayer.js.org/sample.mp4" controls=""></video>
+      </div>
+    </section>
+    <footer id="Waveform">
+      <canvas id="TrackView" width="1738" height="199" style="width: 100%;"></canvas>
+      <div id="WaveCursor" style="left: 1752px; display: none;"></div>
+    </footer>
+  </div>
+  <script>
+  document.getElementById('videoInput').addEventListener('change', handleFileSelect);
+  setTimeout(function (){
+    WaitingText.innerHTML = "Click to initialize<br>Audio Context";
+  }, 125);
+  var ThisAudio           = GetElementById('MainAudio');
+  
+
+  function handleFileSelect(ThisEvent) {
+    const ThisFile = ThisEvent.target.files[0];
+    if(ThisFile){
+      // extractAndPlayAudio(ThisFile);
+      // PlayAudioFile(ThisFile);
+      WaitingText.innerHTML = "Processing file...";
+      WaitingBackground.style.display = "";
+      AnalyseAudioFile(ThisFile, function (ThisAudioContext, ThisAudioBuffer){
+        ThisChannelData   = ThisAudioBuffer.getChannelData(0);
+        console.log("ThisChannelData", ThisChannelData);        
+        var ThatAudio     = URL.createObjectURL(ThisFile);
+        var ThisAudio     = GetElementById('MainAudio'); // document.querySelector("video"); 
+        ThisAudio.src     = ThatAudio;
+        PlayFromAudio ();
+      });
+    }
+  }
+  var SpectrumStarted;
+  var animationFrameID;
+  var ThisAudioContext;
+
+  var TheArrayBuffer;
+  var ThisChannelData;
+
+  var ThisCanvas        = document.getElementById('TrackView'),
+    ctx                 = ThisCanvas.getContext('2d'),
+    width               = ThisCanvas.width,
+    height              = ThisCanvas.height - 2;
+  var backgroundColor   = 'rgb(28, 32, 34)',
+      paddingColor      = 'rgba(255, 255, 255, 0.05)',
+      padding           = 5,
+      duration          = 10,
+      grid              = true;
+      gridNum           = duration * 10 + padding * 2; // gridNum           = 110,
+      gridGap           = width / gridNum; // ​width: 1755 ​gridGap: 15.954545454545455
+      gridColor         = 'rgba(255, 255, 255, 0.05)',
+
+      pixelRatio        = Math.ceil(window.devicePixelRatio), // = 1 default
+      density           = getDensity(); // = 1 default
+
+      scrollable        = true,
+      
+      // BASED ON THE VIDEO:
+      TheCurrentTime    = 0,
+      TotalDuration     = 0,
+      sampleRate        = 0,
+
+      ruler             = true,
+      rulerColor        = 'rgba(255, 255, 255, 0.75)',
+      rulerAtTop        = true,
+      beginTime         = -5,
+
+      progress          = true,
+      progressColor     = 'rgba(255, 255, 255, 0.5)',
+      wave              = true,
+      waveColor         = 'rgba(255, 255, 255, 0.1)',
+      waveScale         = 0.8,
+      waveSize          = 1,
+      waveBorder        = false,
+      waveBorderWidth   = 1,
+      waveBorderColor   = 'rgba(255, 255, 255, 0.1)',
+      scrollbarColor    = "rgba(255, 255, 255, 0.25)",
+
+      cursorColor       = true,
+      cursorColor       = '#ff0000';
+  var ScrollX;
+
+  var FPS30             = (1.0 / 30.0);
+  var FrameCounter      = 0.0;
+  var FrameDropped      = 0.0;
+  var LastTimeStamp     = new Date();
+  
+  function getDensity() {
+    if(gridGap === 0){ return 1;}
+    const fontSize      = 11;
+    ctx.font            = `${fontSize * pixelRatio}px Arial`;
+    const rulerWidth    = ctx.measureText('99:99:99').width;
+    return (function loop(second) {
+      const rate        = ((gridGap * second) / (rulerWidth * 1.5));
+      if(rate > 1){ 
+        return Math.floor(second / 10);
+      }
+      return loop(second + 10);
+    })(10);
+  }
+  function secondToTime(second) {
+    const add0 = (num) => (num < 10 ? `0${num}` : String(num));
+    const hour = Math.floor(second / 3600);
+    const min = Math.floor((second - hour * 3600) / 60);
+    const sec = Math.floor(second - hour * 3600 - min * 60);
+    return [hour, min, sec].map(add0).join(':');
+  }
+  function clamp(num, a, b) {
+    return Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b));
+  }
+
+  async function PlayFromAudio (){
+    ThisAudioContext    = new (window.AudioContext || window.webkitAudioContext || window.mozAudioContext)();
+
+    if("http"          == ThisAudio.src.substr(0, 4)){
+      GetHttpObjectArrayBuffer(ThisAudio.src, function (ThisArrayBuffer){
+        console.log(ThisArrayBuffer);
+        TheArrayBuffer      = ThisArrayBuffer;
+        ThisAudioContext.decodeAudioData(TheArrayBuffer, function (ThisAudioBuffer){
+          ThisChannelData   = ThisAudioBuffer.getChannelData(0);
+          console.log("ThisChannelData", ThisChannelData);        
+          Start();
+        });      
+      });
+    } else 
+    if("blob"          == ThisAudio.src.substr(0, 4)){
+      Start();
+    } else 
+    if("file"          == document.baseURI.substr(0, 4)){
+      alert("CAN'T PLAY ANALYSE IN LOCAL FILE MODE.\nSORRY THOSE BASTERED WON'T ALLOW.\n\nLIKE IT'S A SECURITY RISK.\nGIVE ME A F. BREAK!");
+      // ALWAYS CORS: AND REFUSE TO GIVE DATA
+      if(true){
+        return;
+      }
+      Start();
+    }
+     
+    function Start(){
+      // if(SpectrumStarted){
+      //   return;
+      // }
+      // SpectrumStarted   = true;
+      console.log("Analyser Started");
+      if(animationFrameID){
+        cancelAnimationFrame(animationFrameID); animationFrameID = null;
+      }
+      /*
+      {
+        "config": {
+          "byteLength": 15884052,
+          "useWorker": true,
+          "scrollbar": true,
+          "refreshDelay": 50,
+          "channel": 0,
+          "useAudioContext": false,
+      }
+      */
+      // INIT DRAW
+      sampleRate          = ThisAudioContext.sampleRate;
+      TheCurrentTime      = ThisAudio.currentTime;
+      TotalDuration       = ThisAudio.duration;
+      beginTime           = scrollable? (TheCurrentTime - duration / 2) : (Math.floor(TheCurrentTime / duration) * duration);
+      function Draw (){
+        ScrollX           = (scrollable ? (width / 2) : (padding * gridGap + (TheCurrentTime - beginTime) * gridGap * 10));
+        // cursorX        = (scrollable ? (width / 2) : (padding * gridGap + (TheCurrentTime - beginTime) * gridGap * 10))
+
+        drawBackground();
+        drawGrid();
+        drawRuler();
+        drawWave();
+        drawCursor();
+        drawScrollbar();
+        WaitingBackground.style.display = "none";
+      }
+      Draw ();
+
+      function drawBackground() {
+        ctx.clearRect(0, 0,   width, height);
+        ctx.fillStyle       = backgroundColor;
+        ctx.fillRect(0, 0,    width, height);
+        ctx.fillStyle       = paddingColor;
+        ctx.fillRect(0, 0,    padding * gridGap, height);
+        ctx.fillRect(width  - padding * gridGap, 0, padding * gridGap, height);
+      }
+      function drawGrid   () {
+        ctx.fillStyle = gridColor;
+        for(let index = 0; index < gridNum + 10; index += density) {
+          const x = (scrollable)? gridGap * index - (TheCurrentTime - parseInt(TheCurrentTime, 10)) * gridGap * 10 : gridGap * index;
+          ctx.fillRect(x, 0, pixelRatio, height);
+        }
+        for(let index = 0; index < height / gridGap; index += density){
+          ctx.fillRect(0, gridGap * index, width, pixelRatio);
+        }
+      }
+      function drawRuler  () {
+        const fontSize    = 12;
+        const fontHeight  = 18;
+        const fontTop     = 30;
+        ctx.font          = `${fontSize * pixelRatio}px Arial`;
+        ctx.fillStyle     = rulerColor;
+        let second        = -1;
+        for(let index = 0; index < gridNum + 10; index += 1) {
+          const x = scrollable? (gridGap * index - (TheCurrentTime - parseInt(TheCurrentTime, 10)) * gridGap * 10) : (gridGap * index);
+          if(((index - padding) % 10) === 0) {
+            second       += 1;
+            ctx.fillRect(
+              x,
+              rulerAtTop ? 0 : (height - fontHeight * pixelRatio),
+              pixelRatio,
+              (fontHeight * pixelRatio)
+            );
+            const time = Math.floor(beginTime + second);
+            if(((time % density) === 0) && (time >= 0))
+              ctx.fillText(
+                secondToTime(time), 
+                (x - fontSize * pixelRatio * 2 + pixelRatio),
+                rulerAtTop ? (fontTop * pixelRatio) : (height - fontTop * pixelRatio + fontSize),
+              );
+          } else 
+          if((index - padding) % 5 === 0){
+            ctx.fillRect(
+              x,
+              rulerAtTop ? 0 : height - (fontHeight / 2) * pixelRatio,
+              pixelRatio,
+              (fontHeight / 2) * pixelRatio
+            );
+          }
+        }
+      }
+      function drawWave   () {
+        const middle      = (height / 2);
+        const waveWidth   = (width - gridGap * padding * 2);
+        const startIndex  = Math.floor(beginTime * sampleRate);
+        const endIndex    = Math.floor(clamp((beginTime + duration) * sampleRate, startIndex, Infinity));
+        const step        = Math.floor((endIndex - startIndex) / waveWidth);
+        let stepIndex     = 0;
+        let xIndex        = 0;
+        let min           = 1;
+        let max           = -1;
+        for(let Indx = startIndex; Indx < endIndex; Indx += waveSize) {
+          stepIndex      += 1;
+          const item      = ThisChannelData[Indx] || 0;
+          if(item < min){ 
+            min   = item; 
+          } else 
+          if(item > max){ 
+            max   = item; 
+          }
+          if((stepIndex >= step) && (xIndex < waveWidth)) {
+            const waveX       = gridGap * padding + xIndex;
+            if(waveBorder) {
+              ctx.strokeStyle = waveBorderColor; // Set the border color
+              ctx.lineWidth   = waveBorderWidth; // Set the border width
+              // Draw the border around the rectangle
+              ctx.strokeRect(
+                waveX,
+                ((1 + min * waveScale) * middle),
+                waveSize,
+                Math.max(1, (max - min) * middle * waveScale)
+              );
+            }
+            // Fill the rectangle with the desired color
+            ctx.fillStyle = (progress && ScrollX >= waveX ? progressColor : waveColor);
+            ctx.fillRect(
+              (waveX + (waveBorder ? waveBorderWidth / 2 : 0)),
+              ((1 + min * waveScale) * middle + (waveBorder ? waveBorderWidth / 2 : 0)),
+              (waveSize - (waveBorder ? waveBorderWidth : 0)), 
+              (Math.max(1, (max - min) * middle * waveScale) - (waveBorder ? waveBorderWidth : 0)) 
+              // Adjust the height for the border
+            );
+            xIndex     += waveSize;
+            stepIndex   = 0;
+            min         = 1;
+            max         = -1;
+          }
+        }
+      }
+      function drawCursor() {
+        ctx.fillStyle       = cursorColor;
+        ctx.fillRect(ScrollX, 0, pixelRatio, height);
+      }
+      function drawScrollbar() {
+        if(!scrollable || !TotalDuration || TotalDuration === Infinity) return;
+        const totolWidth        = (gridGap / pixelRatio) * 10 * TotalDuration;
+        const scrollbarWidth    = (width / totolWidth) * width;
+        const scrollbarHeight   = (5 * pixelRatio);
+        const scrollbarLeft     = (TheCurrentTime / TotalDuration) * (width - scrollbarWidth);
+        const scrollbarTop      = (rulerAtTop ? (height - scrollbarHeight) : 0);
+        ctx.fillStyle           = scrollbarColor;
+        ctx.fillRect(scrollbarLeft, scrollbarTop, scrollbarWidth, scrollbarHeight);
+      }
+
+      function renderFrame() {
+        animationFrameID      = requestAnimationFrame(renderFrame);
+        // RESULT: 60 FRAMES/SEC. TOO FAST AND IT'S A WASTE HERE MAKING IT AT 30FPS
+        let CheckTime         = new Date();
+        let ThisDiffTime      = ((CheckTime - LastTimeStamp) / 1000); 
+        if((ThisDiffTime     >= FPS30)){    // IF IT'S GOOD ENOUGH FOR MOVIES...
+          LastTimeStamp       = new Date(); // DON'T WASTE MY COMPUTER RESOURCES.
+          FrameCounter++;
+        } else {
+          FrameDropped++;
+          return;
+        }
+        ScrollX               = (scrollable ? (width / 2) : (padding * gridGap + (TheCurrentTime - beginTime) * gridGap * 10));
+        drawBackground();
+        drawGrid();
+        drawRuler();
+        drawWave();
+        drawCursor();
+        drawScrollbar();
+      }
+
+      // FUNCTION & EVENT REGARDING THE TRACK VIEW
+      var IsGrabed            = false;
+      var LastPageX;
+      var LastCurrentTime;
+      function getCurrentTimeFromEvent(ThisEvent) {
+        const left          = ThisEvent.pageX - TrackView.getBoundingClientRect().left;
+        const paddingWidth  = (padding * gridGap) / pixelRatio;
+        const offsetLeft    = left - paddingWidth;
+        const duration      = getDurationFromWidth(offsetLeft);
+        return duration + beginTime;
+      }
+      function getDurationFromWidth(width) {
+        return (width / ((gridGap / pixelRatio) * 10));
+      }
+      ThisCanvas.onmouseenter   = function (ThisEvent){
+        WaveCursor.style.display = null;
+      }
+      ThisCanvas.onmouseleave   = function (ThisEvent){
+        WaveCursor.style.display = 'none';
+      }
+      ThisCanvas.onmousemove    = function (ThisEvent){
+        if(IsGrabed){
+          let diffWidth         = ThisEvent.pageX - LastPageX;
+          let diffTime          = getDurationFromWidth(diffWidth);
+          TheCurrentTime        = LastCurrentTime + (scrollable ? -diffTime : diffTime);
+          ThisAudio.currentTime = TheCurrentTime;
+          beginTime             = scrollable? (TheCurrentTime - duration / 2) : (Math.floor(TheCurrentTime / duration) * duration);
+
+          if(!(animationFrameID)){
+            Draw ();
+          }
+        } else {
+          WaveCursor.style.left = ThisEvent.pageX - TrackView.getBoundingClientRect().left + 'px';
+        }
+      }
+      ThisCanvas.onmousedown    = function (ThisEvent){
+        if(ThisEvent.button   !== 0){ return; }
+        console.log("Grabing started.");
+        IsGrabed                = true;
+        LastPageX               = ThisEvent.pageX;
+        LastCurrentTime         = getCurrentTimeFromEvent(ThisEvent); // scrollable ? TheCurrentTime : getCurrentTimeFromEvent(ThisEvent);
+        // TheCurrentTime          = LastCurrentTime;
+        // beginTime               = scrollable? (TheCurrentTime - duration / 2) : (Math.floor(TheCurrentTime / duration) * duration);
+
+        // if(!(animationFrameID)){
+        //   Draw ();
+        // }
+      }
+      ThisCanvas.onmouseup      = function (ThisEvent){
+        if(!(IsGrabed)){ return; }
+        IsGrabed                = false;
+        // (0, _utils.removeClass)(container, 'wf-grabbing');
+      }
+      ThisCanvas.onclick        = function (ThisEvent){
+        const ThisTime          = getCurrentTimeFromEvent(ThisEvent);
+        TheCurrentTime          = ThisTime;
+        ThisAudio.currentTime   = TheCurrentTime;
+        beginTime               = scrollable? (TheCurrentTime - duration / 2) : (Math.floor(TheCurrentTime / duration) * duration);
+
+        if(!(animationFrameID)){
+          Draw ();
+        }
+      }
+
+      // FUNCTION & EVENT RELATIVE TO VIDEO
+      function OnTimeUpdate (ThisEvent){
+        TheCurrentTime        = ThisAudio.currentTime;
+        TotalDuration         = ThisAudio.duration;
+        beginTime             = scrollable? (TheCurrentTime - duration / 2) : (Math.floor(TheCurrentTime / duration) * duration);
+        // console.log("VidTime:", TheCurrentTime);
+      }
+      ThisAudio.ontimeupdate  = OnTimeUpdate;
+      // ThisAudio.addEventListener('timeupdate', OnTimeUpdate, {capture : true});
+      
+      function OnPlay (){
+        TheCurrentTime        = ThisAudio.currentTime;
+        TotalDuration         = ThisAudio.duration;
+        beginTime             = scrollable? (TheCurrentTime - duration / 2) : (Math.floor(TheCurrentTime / duration) * duration);
+        console.log("Rendering");
+        renderFrame();
+      }
+      function OnStop (){
+        if(animationFrameID){
+          console.log("Rendering Stopped.");
+          cancelAnimationFrame(animationFrameID); animationFrameID = null;
+        }
+      }
+      ThisAudio.onplay        = OnPlay;
+      ThisAudio.onpause       = OnStop;
+      ThisAudio.onended       = OnStop;
+    }
+  }
+  window.onclick              = function (){
+    window.onclick            = null; 
+    WaitingText.innerHTML     = "Processing file...";
+    PlayFromAudio ();
+  }
+  </script>
+</body>
+
+</html>
