@@ -94,7 +94,7 @@
       justify-content: space-between;
       height: min(5.5vh, 5.5vw);
       border-bottom: 1px solid rgb(10, 10, 10);
-      background-color: rgb(28, 32, 34);
+      background-color: rgb(107, 134, 147);
     }
     .header .left {
       display: flex;
@@ -102,7 +102,6 @@
       height: 100%;
       padding-left: 0px;
     }
-
     .header .right {
       display: flex;
       align-items: center;
@@ -184,7 +183,6 @@
   }, 125);
   var ThisAudio           = document.getElementById('MainAudio');
   
-
   function handleFileSelect(ThisEvent) {
     const ThisFile = ThisEvent.target.files[0];
     if(ThisFile){
@@ -506,7 +504,6 @@
         drawCursor();
         drawScrollbar();
       }
-
       // FUNCTION & EVENT REGARDING THE TRACK VIEW
       var IsGrabed            = false;
       var LastPageX;
@@ -559,6 +556,7 @@
       ThisCanvas.onmouseup      = function (ThisEvent){
         if(!(IsGrabed)){ return; }
         IsGrabed                = false;
+        // (0, _utils.removeClass)(container, 'wf-grabbing');
       }
       ThisCanvas.onclick        = function (ThisEvent){
         const ThisTime          = getCurrentTimeFromEvent(ThisEvent);
@@ -570,17 +568,17 @@
           Draw ();
         }
       }
-
       // FUNCTION & EVENT RELATIVE TO VIDEO
       function OnTimeUpdate (ThisEvent){
         TheCurrentTime        = ThisAudio.currentTime;
         TotalDuration         = ThisAudio.duration;
         beginTime             = scrollable? (TheCurrentTime - duration / 2) : (Math.floor(TheCurrentTime / duration) * duration);
         // console.log("VidTime:", TheCurrentTime);
+        if(!(animationFrameID)){
+          Draw ();
+        }
       }
       ThisAudio.ontimeupdate  = OnTimeUpdate;
-      // ThisAudio.addEventListener('timeupdate', OnTimeUpdate, {capture : true});
-      
       function OnPlay (){
         TheCurrentTime        = ThisAudio.currentTime;
         TotalDuration         = ThisAudio.duration;
@@ -606,5 +604,4 @@
   }
   </script>
 </body>
-
 </html>
