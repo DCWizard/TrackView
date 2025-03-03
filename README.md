@@ -4,7 +4,7 @@ A Simpler version of WFPlayer
 
 - Removed the 128MB limitation.
 
-- Didn't put the contols on the left pane. for customizing the interface.
+- Didn't put the controls on the left pane. for customizing the interface.
 
 - I have a different aspiration with this interface.
 
