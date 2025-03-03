@@ -30,6 +30,7 @@ Such as:
 -A Jeopardy Editor
 -A Video Player. 
 
-You can also give me donation via Wechat 
+You can also give me donation via Wechat <a href="https://github.com/DCWizard/TrackView/blob/main/NewPay.png">My Wechat</a>
+
 Or directly from my web site: https://thinknspeak.net/product/donation/
 
