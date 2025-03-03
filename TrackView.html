@@ -148,7 +148,6 @@
       background-color: #fff;
     }
   </style>
-  <script id="DCTools"  src="DCTools.js"></script>
 </head>
 <body>
   <div id="WaitingBackground">
@@ -183,21 +182,19 @@
   setTimeout(function (){
     WaitingText.innerHTML = "Click to initialize<br>Audio Context";
   }, 125);
-  var ThisAudio           = GetElementById('MainAudio');
+  var ThisAudio           = document.getElementById('MainAudio');
   
 
   function handleFileSelect(ThisEvent) {
     const ThisFile = ThisEvent.target.files[0];
     if(ThisFile){
-      // extractAndPlayAudio(ThisFile);
-      // PlayAudioFile(ThisFile);
       WaitingText.innerHTML = "Processing file...";
       WaitingBackground.style.display = "";
       AnalyseAudioFile(ThisFile, function (ThisAudioContext, ThisAudioBuffer){
         ThisChannelData   = ThisAudioBuffer.getChannelData(0);
         console.log("ThisChannelData", ThisChannelData);        
         var ThatAudio     = URL.createObjectURL(ThisFile);
-        var ThisAudio     = GetElementById('MainAudio'); // document.querySelector("video"); 
+        var ThisAudio     = document.getElementById('MainAudio'); // document.querySelector("video"); 
         ThisAudio.src     = ThatAudio;
         PlayFromAudio ();
       });
@@ -282,6 +279,47 @@
     return Math.max(Math.min(num, Math.max(a, b)), Math.min(a, b));
   }
 
+  function ReadFileAudioData (ThisFile, ThisCallBack){
+    let ThisReader            = new FileReader();
+    function OnDataLoaded (ThisEvent){
+      ThisReader.removeEventListener('load', OnDataLoaded);
+      let ThisArrayBuffer     = ThisEvent.target.result; //  ThisReader.result;
+      console.log("ThisArrayBuffer", ThisArrayBuffer);
+      let ThisAudioContext    = new (window.AudioContext || window.webkitAudioContext || window.mozAudioContext)();
+
+      if(ThisAudioContext){
+        ThisAudioContext.decodeAudioData(ThisArrayBuffer, function (ThisDataBuffer){
+          if((ThisCallBack)){ 
+            ThisCallBack(ThisAudioContext, ThisDataBuffer); 
+          }
+        }, function (ThisErr){
+          console.error('Error ReadFileAudioData decoding audio: ', ThisErr);
+        });
+        return true;
+      } else {
+        console.error('Error No ReadFileAudioData Audio Context');
+      }
+    }
+    ThisReader.addEventListener('load', OnDataLoaded);
+    ThisReader.readAsArrayBuffer(ThisFile);
+  }
+  function AnalyseAudioFile(ThisFile, ThisCallBack){
+    ReadFileAudioData (ThisFile, function (ThisAudioContext, ThisAudioBuffer){
+      console.log("ThisAudioBuffer", ThisAudioBuffer);
+
+      if((ThisCallBack)){ 
+        ThisCallBack(ThisAudioContext, ThisAudioBuffer); 
+      }
+    });
+  }
+  function GetHttpObjectArrayBuffer(ThisUrl, ThisCallBack){
+    fetch(ThisUrl).then(ThisRes => ThisRes.arrayBuffer()).then(ThisArrayBuffer => {
+      // console.log("ThisArrayBuffer", ThisArrayBuffer);
+      if((ThisCallBack)){
+        ThisCallBack(ThisArrayBuffer);
+      }    
+    });
+  }
   async function PlayFromAudio (){
     ThisAudioContext    = new (window.AudioContext || window.webkitAudioContext || window.mozAudioContext)();
 
@@ -309,25 +347,10 @@
     }
      
     function Start(){
-      // if(SpectrumStarted){
-      //   return;
-      // }
-      // SpectrumStarted   = true;
       console.log("Analyser Started");
       if(animationFrameID){
         cancelAnimationFrame(animationFrameID); animationFrameID = null;
       }
-      /*
-      {
-        "config": {
-          "byteLength": 15884052,
-          "useWorker": true,
-          "scrollbar": true,
-          "refreshDelay": 50,
-          "channel": 0,
-          "useAudioContext": false,
-      }
-      */
       // INIT DRAW
       sampleRate          = ThisAudioContext.sampleRate;
       TheCurrentTime      = ThisAudio.currentTime;
@@ -503,6 +526,7 @@
       }
       ThisCanvas.onmouseleave   = function (ThisEvent){
         WaveCursor.style.display = 'none';
+        IsGrabed                = false;
       }
       ThisCanvas.onmousemove    = function (ThisEvent){
         if(IsGrabed){
@@ -535,7 +559,6 @@
       ThisCanvas.onmouseup      = function (ThisEvent){
         if(!(IsGrabed)){ return; }
         IsGrabed                = false;
-        // (0, _utils.removeClass)(container, 'wf-grabbing');
       }
       ThisCanvas.onclick        = function (ThisEvent){
         const ThisTime          = getCurrentTimeFromEvent(ThisEvent);
