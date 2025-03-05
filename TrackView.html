@@ -219,15 +219,18 @@
     height              = ThisCanvas.height - 2;
   var backgroundColor   = 'rgb(28, 32, 34)',
       paddingColor      = 'rgba(255, 255, 255, 0.05)',
-      TrackPadding      = 5, 
+      TrackPadding      = 2, 
       duration          = 10,
+      HalfDuration      = duration / 2;
       grid              = true;
       gridNum           = duration * 10 + TrackPadding * 2; // gridNum           = 110,
       gridGap           = width / gridNum; // ​width: 1755 ​gridGap: 15.954545454545455
       gridColor         = 'rgba(255, 255, 255, 0.05)',
+      CenterPlot        = (TrackPadding * gridGap),
 
       pixelRatio        = Math.ceil(window.devicePixelRatio), // = 1 default
       density           = getDensity(); // = 1 default
+      PixRatio          = (gridGap / pixelRatio),
 
       scrollable        = true, // SHOULD ALWAYS BE TRUE TRUST ME IT'S BETTER
       
@@ -252,7 +255,11 @@
       waveBorderColor   = 'rgba(255, 255, 255, 0.1)',
       scrollbarColor    = "rgba(255, 255, 255, 0.25)",
       
-      CursorPos         = (width / 2); // ONLY IN SCROLABLE
+      CursorPos         = (width  / 2); // ONLY IN SCROLABLE
+      MiddleHeight      = (height / 2);
+      GridArea          = (height / gridGap);
+      GridScale         = (gridGap * 10);
+
       cursorColor       = true,
       cursorColor       = '#ff0000';
   var ScrollX;
@@ -260,18 +267,17 @@
   var LastPageX;
   var LastCurrentTime;
 
-
   var FPS30             = (1.0 / 30.0);
   var FrameCounter      = 0.0;
   var FrameDropped      = 0.0;
   var LastTimeStamp     = new Date();
 
   var Int               = ThisValue => {var Val = parseInt(ThisValue); return (isNaN(Val))?0:Val;}
-  function CalcBeginTime  (ThisTime  = TheCurrentTime) {return (scrollable ? (ThisTime - duration / 2) : (Math.floor(ThisTime / duration) * duration));}
-  function CalcScrollX    (ThisTime  = TheCurrentTime) {return (scrollable ? (CursorPos)               : (TrackPadding * gridGap + (ThisTime - beginTime) * gridGap * 10));}
+  function CalcBeginTime  (ThisTime  = TheCurrentTime) {return (scrollable ? (ThisTime - HalfDuration) : (Math.floor(ThisTime / duration) * duration));}
+  function CalcScrollX    (ThisTime  = TheCurrentTime) {return (scrollable ? (CursorPos)               : (CenterPlot + (ThisTime - beginTime) * GridScale));}
   function CalcCursorTime (ThisPosX) { 
-    let ThePadding      = (TrackPadding * gridGap / pixelRatio);
-    let ThePixRatio     = (gridGap / pixelRatio * 10);
+    let ThePadding      = (CenterPlot / pixelRatio);
+    let ThePixRatio     = (PixRatio * 10);
     // console.log("ThePadding",  ThePadding);
     // console.log("ThePixRatio", ThePixRatio);
     let TheOutput       = (ThisPosX - ThePadding) / ThePixRatio;
@@ -398,10 +404,10 @@
         cancelAnimationFrame(animationFrameID); animationFrameID = null;
       }
       // INIT DRAW
-      sampleRate        = ThisAudioContext.sampleRate;
-      TheCurrentTime    = ThisAudio.currentTime;
-      TotalDuration     = ThisAudio.duration;
-      beginTime         = CalcBeginTime ();
+      sampleRate          = ThisAudioContext.sampleRate;
+      TheCurrentTime      = ThisAudio.currentTime;
+      TotalDuration       = ThisAudio.duration;
+      beginTime           = CalcBeginTime ();
 
       function Draw (){
         ScrollX           = CalcScrollX();
@@ -421,57 +427,70 @@
         ctx.fillStyle       = backgroundColor;
         ctx.fillRect(0, 0,    width, height);
         ctx.fillStyle       = paddingColor;
-        ctx.fillRect(0, 0,    TrackPadding * gridGap, height);
-        ctx.fillRect(width  - TrackPadding * gridGap, 0, TrackPadding * gridGap, height);
+        ctx.fillRect(0, 0,    CenterPlot, height);
+        ctx.fillRect(width  - CenterPlot, 0, CenterPlot, height);
       }
       function drawGrid       () {
         ctx.fillStyle = gridColor;
-        for(let index = 0; index < gridNum + 10; index += density) {
-          let x = (scrollable)? gridGap * index - (TheCurrentTime - parseInt(TheCurrentTime, 10)) * gridGap * 10 : gridGap * index;
+        let ThisCurrentTime = (TheCurrentTime - parseInt(TheCurrentTime, 10)) * GridScale;
+        for(let index       = 0; index < gridNum + 10; index += density) {
+          let x = (scrollable)? gridGap * index - ThisCurrentTime : gridGap * index;
           ctx.fillRect(x, 0, pixelRatio, height);
         }
-        for(let index = 0; index < height / gridGap; index += density){
+        for(let index = 0; index < GridArea; index += density){
           ctx.fillRect(0, gridGap * index, width, pixelRatio);
         }
       }
       function drawRuler      () {
-        let fontSize      = 12;
-        let fontHeight    = 18;
-        let fontTop       = 30;
-        ctx.font          = `${fontSize * pixelRatio}px Arial`;
-        ctx.fillStyle     = rulerColor;
-        let second        = -1;
+        let fontSize        = 12;
+        let fontHeight      = 18;
+        let fontTop         = 30;
+        let HalfFontHeight  = (fontHeight / 2) * pixelRatio;
+        let FullFontHeight  = (fontHeight) * pixelRatio;
+
+        ctx.font            = `${fontSize * pixelRatio}px Arial`;
+        ctx.fillStyle       = rulerColor;
+        let second          = -1;
+        let RelativeTextX   = fontSize * pixelRatio * 2;
+        let RelativeTextY   = fontTop * pixelRatio;
+        let ThisCurrentTime = (TheCurrentTime - parseInt(TheCurrentTime, 10)) * GridScale;
+
+        // NEVER CALCULATE IN A DRAWING LOOP IF YOU CAN AVOID
+        // AND OBVIOUSLY DON'T CALCULATE IT TWICE
+        // EXCEPTION -+ THOSE COST 1CC ONLY THE SAME AS A IF
+        // WHY IS IT IMPORTANT? BECAUSE I INTEND TO DO MUCH MORE THAN JUST THAT
         for(let index = 0; index < gridNum + 10; index += 1) {
-          let x = scrollable? (gridGap * index - (TheCurrentTime - parseInt(TheCurrentTime, 10)) * gridGap * 10) : (gridGap * index);
+          let x = scrollable? (gridGap * index - ThisCurrentTime) : (gridGap * index);
           if(((index - TrackPadding) % 10) === 0) {
-            second       += 1;
+            second         += 1;
             ctx.fillRect(
               x,
-              rulerAtTop ? 0 : (height - fontHeight * pixelRatio),
+              rulerAtTop ? 0 : (height - FullFontHeight),
               pixelRatio,
-              (fontHeight * pixelRatio)
+              FullFontHeight
             );
             let time      = Math.floor(beginTime + second);
-            if(((time % density) === 0) && (time >= 0))
+            if(((time % density) === 0) && (time >= 0)){
               ctx.fillText(
                 secondToTime(time), 
-                (x - fontSize * pixelRatio * 2 + pixelRatio),
-                rulerAtTop ? (fontTop * pixelRatio) : (height - fontTop * pixelRatio + fontSize)
+                (x - RelativeTextX + pixelRatio),
+                rulerAtTop ? (RelativeTextY) : (height - RelativeTextY + fontSize)
               );
+            }
           } else 
           if((index - TrackPadding) % 5 === 0){
             ctx.fillRect(
               x,
-              rulerAtTop ? 0 : height - (fontHeight / 2) * pixelRatio,
+              rulerAtTop ? 0 : height - HalfFontHeight,
               pixelRatio,
-              (fontHeight / 2) * pixelRatio
+              HalfFontHeight
             );
           }
         }
       }
       function drawWave       () {
-        let middle        = (height / 2);
-        let waveWidth     = (width - gridGap * TrackPadding * 2);
+        let GridSpace     = (gridGap * TrackPadding);
+        let waveWidth     = (width - GridSpace * 2);
         let startIndex    = Math.floor(beginTime * sampleRate);
         let endIndex      = Math.floor(clamp((beginTime + duration) * sampleRate, startIndex, Infinity));
         let step          = Math.floor((endIndex - startIndex) / waveWidth);
@@ -479,35 +498,42 @@
         let xIndex        = 0;
         let min           = 1;
         let max           = -1;
-        for(let Indx = startIndex; Indx < endIndex; Indx += waveSize) {
+
+        // NEVER CALCULATE IN A DRAWING LOOP IF YOU CAN AVOID
+        // AND OBVIOUSLY DON'T CALCULATE IT TWICE
+        // EXCEPTION -+ THOSE COST 1CC ONLY THE SAME AS A IF
+        // WHY IS IT IMPORTANT? BECAUSE I INTEND TO DO MUCH MORE THAN JUST THAT
+        for(let Indx      = startIndex; Indx < endIndex; Indx += waveSize) {
           stepIndex      += 1;
           let item        = ThisChannelData[Indx] || 0;
-          if(item < min){ 
-            min   = item; 
+          if(item         < min){ 
+            min           = item; 
           } else 
-          if(item > max){ 
-            max   = item; 
+          if(item         > max){ 
+            max           = item; 
           }
+          let WaveY       = ((1 + min * waveScale) * MiddleHeight);
+          let WaveH       = Math.max(1, (max - min) * MiddleHeight * waveScale);
           if((stepIndex  >= step) && (xIndex < waveWidth)) {
-            let waveX     = gridGap * TrackPadding + xIndex;
+            let waveX     = GridSpace + xIndex;
             if(waveBorder) {
               ctx.strokeStyle = waveBorderColor; // Set the border color
               ctx.lineWidth   = waveBorderWidth; // Set the border width
               // Draw the border around the rectangle
               ctx.strokeRect(
                 waveX,
-                ((1 + min * waveScale) * middle),
+                WaveY,
                 waveSize,
-                Math.max(1, (max - min) * middle * waveScale)
+                WaveH
               );
             }
             // Fill the rectangle with the desired color
             ctx.fillStyle = (progress && ScrollX >= waveX ? progressColor : waveColor);
             ctx.fillRect(
-              (waveX + (waveBorder ? waveBorderWidth / 2 : 0)),
-              ((1 + min * waveScale) * middle + (waveBorder ? waveBorderWidth / 2 : 0)),
-              (waveSize - (waveBorder ? waveBorderWidth : 0)), 
-              (Math.max(1, (max - min) * middle * waveScale) - (waveBorder ? waveBorderWidth : 0)) 
+              (waveX      + (waveBorder ? waveBorderWidth / 2 : 0)),
+              (WaveY      + (waveBorder ? waveBorderWidth / 2 : 0)),
+              (waveSize   - (waveBorder ? waveBorderWidth : 0)), 
+              (WaveH      - (waveBorder ? waveBorderWidth : 0)) 
               // Adjust the height for the border
             );
             xIndex       += waveSize;
@@ -519,11 +545,17 @@
       }
       function drawCursor     () {
         ctx.fillStyle       = cursorColor;
-        ctx.fillRect(ScrollX, 0, pixelRatio, height);
+        ctx.globalAlpha = 0.25;
+        ctx.fillRect(ScrollX - pixelRatio, 0, pixelRatio, height);
+        ctx.globalAlpha = 0.5; // WE DON'T WANT TO HIDE THE WAVE 100%
+        ctx.fillRect(ScrollX    , 0, pixelRatio, height);
+        ctx.globalAlpha = 0.25;
+        ctx.fillRect(ScrollX + pixelRatio, 0, pixelRatio, height);
+        ctx.globalAlpha = 1;
       }
       function drawScrollbar  () {
         if(!scrollable || !TotalDuration || TotalDuration === Infinity) return;
-        let totalWidth          = (gridGap / pixelRatio) * 10 * TotalDuration;
+        let totalWidth          = (PixRatio) * 10 * TotalDuration;
         let scrollbarWidth      = (width / totalWidth) * width;
         let scrollbarHeight     = (5 * pixelRatio);
         let scrollbarLeft       = (TheCurrentTime / TotalDuration) * (width - scrollbarWidth);
@@ -561,7 +593,7 @@
           Waveform.style.cursor = "grab";
           
           let diffWidth         = ThisEvent.pageX - LastPageX;
-          let diffTime          = (diffWidth / ((gridGap / pixelRatio) * 10)); 
+          let diffTime          = (diffWidth / ((PixRatio) * 10)); 
 
           ThisAudio.currentTime = LastCurrentTime + (scrollable ? -diffTime : diffTime);
           TheCurrentTime        = ThisAudio.currentTime;
