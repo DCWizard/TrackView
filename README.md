@@ -1,5 +1,7 @@
 A Simpler version of WFPlayer
-
+  
+  <strong>You might be interested in my 'Track II' version I added a few goodies.</strong>
+  
 - Fixed a few bugs.
 
 - Removed the 128MB limitation.
