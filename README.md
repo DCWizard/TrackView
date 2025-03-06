@@ -2,7 +2,7 @@ A Simpler version of WFPlayer
 
   A Simple Video Player as a base for a Video Editor
   
-  <strong>You might be interested in my '<a href="https://github.com/DCWizard/TrackView-II/tree/main" >Track II</a>' version I added a few goodies.</strong>
+  <strong>You might be interested in my '<a href="https://github.com/DCWizard/TrackView-II/tree/main" >TrackView II</a>' version I added a few goodies.</strong>
   
 - Fixed a few bugs.
 
