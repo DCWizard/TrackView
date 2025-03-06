@@ -1,4 +1,6 @@
 A Simpler version of WFPlayer
+
+  A Simple Video Player as a base for a Video Editor
   
   <strong>You might be interested in my 'Track II' version I added a few goodies.</strong>
   
@@ -48,8 +50,10 @@ Such as:
 
 -A Video Player. 
 
+If you appreciate my work.
 
-You can also give me donation via Wechat <a href="https://github.com/DCWizard/TrackView/blob/main/NewPay.png">My Wechat</a>
+You can give me donation from my web site: https://thinknspeak.net/product/donation/
 
-Or directly from my web site: https://thinknspeak.net/product/donation/
+Or directly via Wechat <a href="https://github.com/DCWizard/WriteIt/raw/refs/heads/main/img/MyWechat.webp" >My Wechat</a>
+
 
